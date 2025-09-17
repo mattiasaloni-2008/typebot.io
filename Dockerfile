@@ -1,14 +1,13 @@
 FROM node:18-alpine
 
-# Installa Yarn e dipendenze di sistema
+# Installa dipendenze di sistema (Yarn è già presente)
 RUN apk add --no-cache \
     libc6-compat \
     openssl \
     git \
     python3 \
     make \
-    g++ \
-    && npm install -g yarn
+    g++
 
 WORKDIR /app
 
