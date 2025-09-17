@@ -1,36 +1,36 @@
 FROM node:18-alpine
 
-# Installa dipendenze di sistema
+# Installa Yarn e dipendenze di sistema
 RUN apk add --no-cache \
     libc6-compat \
     openssl \
     git \
     python3 \
     make \
-    g++
+    g++ \
+    && npm install -g yarn
 
 WORKDIR /app
 
-# Copia package.json files
-COPY package*.json ./
-COPY apps/builder/package*.json ./apps/builder/
-COPY packages/*/package*.json ./packages/*/
+# Copia i file di configurazione Yarn
+COPY package.json yarn.lock* ./
+COPY apps/builder/package.json ./apps/builder/
 COPY packages/*/package.json ./packages/*/
 
-# Installa dipendenze
-RUN npm install --legacy-peer-deps
+# Installa dipendenze con Yarn (supporta workspace)
+RUN yarn install --frozen-lockfile
 
-# Copia il codice
+# Copia tutto il codice
 COPY . .
 
 # Build dell'applicazione
-RUN npm run build --workspace=apps/builder
+RUN yarn workspace apps/builder build
 
 # Genera Prisma client
-RUN npx prisma generate --schema=packages/prisma/postgresql/schema.prisma
+RUN yarn prisma generate --schema=packages/prisma/postgresql/schema.prisma
 
 # Esponi porta
 EXPOSE 3000
 
 # Comando di avvio
-CMD ["npm", "run", "start", "--workspace=apps/builder"]
+CMD ["yarn", "workspace", "apps/builder", "start"]
