@@ -1,7 +1,9 @@
-FROM node:18-alpine
+FROM oven/bun:1.2.21-alpine
 
-# Installa dipendenze di sistema (Yarn è già presente)
+# Installa Node.js (necessario per alcuni packages)
 RUN apk add --no-cache \
+    nodejs \
+    npm \
     libc6-compat \
     openssl \
     git \
@@ -11,25 +13,25 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Copia i file di configurazione Yarn
-COPY package.json yarn.lock* ./
+# Copia i file di configurazione
+COPY package.json bun.lockb* ./
 COPY apps/builder/package.json ./apps/builder/
 COPY packages/*/package.json ./packages/*/
 
-# Installa dipendenze con Yarn (supporta workspace)
-RUN yarn install --frozen-lockfile
+# Installa dipendenze con Bun
+RUN bun install
 
-# Copia tutto il codice
+# Copia il codice
 COPY . .
 
 # Build dell'applicazione
-RUN yarn workspace apps/builder build
+RUN bun run build --filter=apps/builder
 
 # Genera Prisma client
-RUN yarn prisma generate --schema=packages/prisma/postgresql/schema.prisma
+RUN bunx prisma generate --schema=packages/prisma/postgresql/schema.prisma
 
 # Esponi porta
 EXPOSE 3000
 
-# Comando di avvio
-CMD ["yarn", "workspace", "apps/builder", "start"]
+# Comando di avvio con Node (Next.js funziona meglio con Node)
+CMD ["node", "apps/builder/.next/standalone/apps/builder/server.js"]
