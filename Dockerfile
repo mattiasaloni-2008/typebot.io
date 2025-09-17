@@ -1,9 +1,10 @@
-FROM oven/bun:1.2.21-alpine
+# Usa il Dockerfile originale ma crea gli entrypoint mancanti
+FROM node:18-alpine
 
-# Installa Node.js (necessario per alcuni packages)
+WORKDIR /app
+
+# Installa dipendenze di sistema
 RUN apk add --no-cache \
-    nodejs \
-    npm \
     libc6-compat \
     openssl \
     git \
@@ -11,27 +12,28 @@ RUN apk add --no-cache \
     make \
     g++
 
-WORKDIR /app
+# Installa Bun
+RUN npm install -g bun
 
-# Copia i file di configurazione
-COPY package.json bun.lockb* ./
-COPY apps/builder/package.json ./apps/builder/
-COPY packages/*/package.json ./packages/*/
-
-# Installa dipendenze con Bun
-RUN bun install
-
-# Copia il codice
+# Copia tutto il progetto
 COPY . .
 
-# Build dell'applicazione
+# Installa dipendenze
+RUN bun install
+
+# Build dell'applicazione builder
 RUN bun run build --filter=apps/builder
 
 # Genera Prisma client
 RUN bunx prisma generate --schema=packages/prisma/postgresql/schema.prisma
 
+# Crea l'entrypoint script mancante
+RUN mkdir -p scripts && \
+    echo '#!/bin/sh\nset -e\necho "Starting Typebot Builder..."\nexec node apps/builder/.next/standalone/apps/builder/server.js' > scripts/builder-entrypoint.sh && \
+    chmod +x scripts/builder-entrypoint.sh
+
 # Esponi porta
 EXPOSE 3000
 
-# Comando di avvio con Node (Next.js funziona meglio con Node)
-CMD ["node", "apps/builder/.next/standalone/apps/builder/server.js"]
+# Avvia l'applicazione
+ENTRYPOINT ["./scripts/builder-entrypoint.sh"]
