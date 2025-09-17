@@ -22,14 +22,14 @@ COPY . .
 RUN bun install
 
 # Build dell'applicazione builder
-RUN bun run build --filter=apps/builder
+RUN bun run build --filter=builder
 
 # Genera Prisma client
 RUN bunx prisma generate --schema=packages/prisma/postgresql/schema.prisma
 
 # Crea l'entrypoint script mancante
 RUN mkdir -p scripts && \
-    echo '#!/bin/sh\nset -e\necho "Starting Typebot Builder..."\nexec node apps/builder/.next/standalone/apps/builder/server.js' > scripts/builder-entrypoint.sh && \
+    echo '#!/bin/sh\nset -e\necho "Starting Typebot Builder..."\nif [ "$DATABASE_URL" ]; then\n  echo "Running database migrations..."\n  bunx prisma migrate deploy --schema=packages/prisma/postgresql/schema.prisma || echo "Migration failed or not needed"\nfi\nexec node apps/builder/.next/standalone/apps/builder/server.js' > scripts/builder-entrypoint.sh && \
     chmod +x scripts/builder-entrypoint.sh
 
 # Esponi porta
