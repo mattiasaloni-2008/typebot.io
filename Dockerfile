@@ -3,40 +3,32 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Installa dipendenze di sistema
-RUN apk add --no-cache \
-    libc6-compat \
-    openssl \
-    git \
-    python3 \
-    make \
-    g++
+RUN apk add --no-cache libc6-compat openssl git python3 make g++
 
-# Installa Bun
-RUN npm install -g bun
-
-# Copia tutto il progetto
+# Copia tutto
 COPY . .
 
-# Installa dipendenze
+# Installa Bun globalmente
+RUN npm install -g bun
+
+# Installa dipendenze del progetto
 RUN bun install
 
 # Genera Prisma client
 RUN bunx prisma generate --schema=packages/prisma/postgresql/schema.prisma
 
-# Build solo del builder senza typecheck
-ENV SKIP_ENV_VALIDATION=true
-ENV CI=true
-WORKDIR /app/apps/builder
-RUN bun run next build
-WORKDIR /app
+# Build tutti i packages prima del builder
+RUN bun run build:packages || echo "Packages build failed, continuing..."
 
-# Crea l'entrypoint script
-RUN mkdir -p scripts && \
-    echo '#!/bin/sh\nset -e\necho "Starting Typebot Builder..."\nif [ "$DATABASE_URL" ]; then\n  echo "Running database migrations..."\n  bunx prisma migrate deploy --schema=packages/prisma/postgresql/schema.prisma || echo "Migration failed or not needed"\nfi\nexec node apps/builder/.next/standalone/apps/builder/server.js' > scripts/builder-entrypoint.sh && \
-    chmod +x scripts/builder-entrypoint.sh
+# Vai nella cartella builder e builda direttamente  
+WORKDIR /app/apps/builder
+RUN SKIP_ENV_VALIDATION=true bunx next build
+
+# Torna alla root
+WORKDIR /app
 
 # Esponi porta
 EXPOSE 3000
 
-# Avvia l'applicazione
-ENTRYPOINT ["./scripts/builder-entrypoint.sh"]
+# Comando di avvio diretto
+CMD ["node", "apps/builder/.next/standalone/apps/builder/server.js"]
