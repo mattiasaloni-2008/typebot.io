@@ -27,11 +27,8 @@ RUN bunx prisma generate --schema=packages/prisma/postgresql/schema.prisma
 ENV SKIP_ENV_VALIDATION=true
 ENV CI=true
 WORKDIR /app/apps/builder
-RUN bun run build:only
+RUN bun run next build
 WORKDIR /app
-
-# Se il comando sopra non esiste, prova questo:
-# RUN cd apps/builder && bun run next build
 
 # Crea l'entrypoint script
 RUN mkdir -p scripts && \
