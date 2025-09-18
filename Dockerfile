@@ -14,18 +14,13 @@ RUN npm install -g bun
 # Installa dipendenze del progetto
 RUN bun install
 
-# Genera Prisma client
+# Genera Prisma client (già fatto dal postinstall ma assicuriamoci)
 RUN bunx prisma generate --schema=packages/prisma/postgresql/schema.prisma
 
-# Build tutti i packages prima del builder
-RUN bun run build:packages || echo "Packages build failed, continuing..."
-
-# Vai nella cartella builder e builda direttamente  
-WORKDIR /app/apps/builder
-RUN SKIP_ENV_VALIDATION=true bunx next build
-
-# Torna alla root
-WORKDIR /app
+# Build di tutti i packages necessari usando turbo
+ENV SKIP_ENV_VALIDATION=true
+ENV CI=true
+RUN bunx turbo build --filter=builder^... --filter=builder
 
 # Esponi porta
 EXPOSE 3000
